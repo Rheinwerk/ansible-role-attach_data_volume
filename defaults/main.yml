@@ -1,0 +1,16 @@
+---
+# defaults file for ansible-role-attach_data_volume
+CD_ENV:
+  iaas:
+    name: "aws"
+    account: "dummy"
+    env: "dummy"
+    region: "eu-central-1"
+  data_vol:
+    device: "xvdb"
+    id: "vol-12345678"
+    mountpoint: "/data"
+  instance:
+    hostgroup: "great_value_servers"
+
+filesystem_label: "CD_DATA"

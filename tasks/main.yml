@@ -1,0 +1,90 @@
+---
+- name: Assert that CD_ENV is a dictionary
+  ansible.builtin.assert:
+    that: ( CD_ENV is defined ) and ( CD_ENV | type_debug == "dict" )
+
+- name: Assert that all required CD_ENV.data_vol keys are set and not empty
+  ansible.builtin.assert:
+    that:
+      - CD_ENV.data_vol is defined
+      - CD_ENV.data_vol.device is defined
+      - CD_ENV.data_vol.device | length > 0
+      - CD_ENV.data_vol.id is defined
+      - CD_ENV.data_vol.id | length > 0
+      - CD_ENV.data_vol.mountpoint is defined
+      - CD_ENV.data_vol.mountpoint | length > 0
+
+# The device_name attribute is mandatory, but only identifies the disk in the
+# AWS API. It is NOT a valid device name to mount or format, because the kernel
+# will almost always use a different name!
+- name: Attach Data Volume
+  amazon.aws.ec2_vol:
+    region: "{{ ansible_ec2_placement_region }}"
+    instance: "{{ ansible_ec2_instance_id }}"
+    id: "{{ CD_ENV.data_vol.id }}"
+    device_name: "/dev/{{ CD_ENV.data_vol.device }}"
+    delete_on_termination: no
+    purge_tags: false
+  register: attach
+
+- name: Print Data Volume result
+  ansible.builtin.debug:
+    var: attach
+
+# Sanity Check and Debugging Info: List non-root disks
+- name: Get data disk summary
+  ansible.builtin.command: /usr/local/sbin/data-disk-summary
+  register: data_disk_summary
+  changed_when: data_disk_summary.stdout | length > 0
+
+- name: Print data disk summary
+  ansible.builtin.debug:
+    var: data_disk_summary.stdout
+
+# Sanity Check and Debugging Info: List unformatted / unlabeled data disks
+- name: Identify unused data disks
+  ansible.builtin.command: /usr/local/sbin/find-unused-disk
+  register: unused_disk
+  ignore_errors: true
+  changed_when: unused_disk.stdout | length > 0
+
+- name: Print unused data disks
+  ansible.builtin.debug:
+    var: unused_disk.stdout
+
+# If an unused device exists, and there is no other with the label "CD_DATA",
+# format the unused one and label it.
+- name: Format unused data disks
+  community.general.filesystem:
+    fstype: xfs
+    dev: "/dev/{{ unused_disk.stdout }}"
+    opts: "-L {{ filesystem_label }}"
+  register: fs_create
+  when: unused_disk.rc == 0 and data_disk_summary.rc == 0 and not filesystem_label in data_disk_summary.stdout
+
+- name: Print result of Format unused data disks
+  ansible.builtin.debug:
+    var: fs_create
+
+# Ensure the designed mount point directory exists
+- name: Create Mount Point
+  ansible.builtin.file:
+    name: "{{ CD_ENV.data_vol.mountpoint }}"
+    state: directory
+    owner: root
+    group: root
+    mode: "0755"
+
+# Create fstab entry and mount if freshly formatted
+- name: Mount Data Volume
+  ansible.posix.mount:
+    fstype: xfs
+    path: "{{ CD_ENV.data_vol.mountpoint }}"
+    opts: "noatime,inode64"
+    src: "LABEL=CD_DATA"
+    state: mounted
+  register: mount
+
+- name: Print result of Mount Data Volume
+  ansible.builtin.debug:
+    var: mount
