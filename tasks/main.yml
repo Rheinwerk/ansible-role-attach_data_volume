@@ -31,6 +31,13 @@
   ansible.builtin.debug:
     var: attach
 
+# HACK: wait for volume to appear in system
+- name: Wait for disk/by-id/nvme-Amazon_Elastic_Block_Store_ path # noqa no-handler
+  ansible.builtin.wait_for:
+    path: "/dev/disk/by-id/nvme-Amazon_Elastic_Block_Store_{{ CD_ENV.data_vol.id | replace('-', '') }}"
+    state: present
+  when: attach.changed
+
 # Sanity Check and Debugging Info: List non-root disks
 - name: Get data disk summary
   ansible.builtin.command: /usr/local/sbin/data-disk-summary
