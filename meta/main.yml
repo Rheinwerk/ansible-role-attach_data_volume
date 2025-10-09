@@ -1,6 +1,5 @@
 galaxy_info:
-  author: Michael Schmitz
-  namespace: rheinwerk
+  author: rheinwerk
   role_name: attach_data_volume
   description: Attaches Data Volumes on AWS EC2 instances
   company: Rheinwerk
