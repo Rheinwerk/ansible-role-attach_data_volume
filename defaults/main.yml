@@ -1,6 +1,6 @@
 ---
 # defaults file for ansible-role-attach_data_volume
-CD_ENV:
+CD_ENV: # noqa: var-naming[pattern]
   iaas:
     name: "aws"
     account: "dummy"
