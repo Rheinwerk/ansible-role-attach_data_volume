@@ -19,8 +19,8 @@
 # will almost always use a different name!
 - name: Attach Data Volume
   amazon.aws.ec2_vol:
-    region: "{{ ansible_ec2_placement_region }}"
-    instance: "{{ ansible_ec2_instance_id }}"
+    region: "{{ ansible_facts['ec2_placement_region'] }}"
+    instance: "{{ ansible_facts['ec2_instance_id'] }}"
     id: "{{ CD_ENV.data_vol.id }}"
     device_name: "/dev/{{ CD_ENV.data_vol.device }}"
     delete_on_termination: no
